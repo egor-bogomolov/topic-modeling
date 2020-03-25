@@ -31,7 +31,7 @@ def extract_frequencies_from_file(lines):
     return doc_frequency, term_frequency
 
 
-files = [f for f in os.listdir(args.bow) if not f.endswith('.lzo') and not f.endswith('.lzo.index')]
+files = [f for f in os.listdir(args.bow) if not f.endswith('.lzo') and not f.endswith('.lzo.index') and f != '.gitkeep']
 print(f'Loading data from {len(files)} files')
 projects = [open(os.path.join(args.bow, fname), 'r').readlines() for fname in files]
 n_documents = sum(map(len, projects))
