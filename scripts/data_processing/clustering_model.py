@@ -113,3 +113,6 @@ class ClusteringModel:
         if self.__wetc is None:
             self.__wetc = self.__compute_wetc()
         return self.__wetc
+
+    def mean_wetc(self) -> np.float:
+        return self.wetc().mean()
