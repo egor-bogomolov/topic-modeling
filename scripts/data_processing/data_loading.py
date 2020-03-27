@@ -8,8 +8,8 @@ from tqdm import tqdm
 from spherecluster import SphericalKMeans
 
 __all__ = [
-    'read_vec_file', 'save_tokens', 'read_tokens', 'save_vectors', 'read_vectors', 'load_clustering_model',
-    'save_clusters', 'read_clusters', 'save_reference_tokens', 'save_readable_ref_tokens',
+    'read_vec_file', 'save_tokens', 'read_tokens', 'save_vectors', 'read_vectors', 'save_clustering_model',
+    'load_clustering_model', 'save_clusters', 'read_clusters', 'save_reference_tokens', 'save_readable_ref_tokens',
     'read_reference_tokens', 'read_doc_freq', 'read_term_freq', 'read_idf'
 ]
 
@@ -48,6 +48,12 @@ def save_vectors(vectors_file: Path, vectors: np.ndarray) -> None:
 def read_vectors(vectors_file: Path) -> np.ndarray:
     vectors = np.load(str(vectors_file), allow_pickle=True)
     return vectors
+
+
+def save_clustering_model(folder: Path, model: SphericalKMeans) -> None:
+    if not folder.exists():
+        folder.mkdir()
+    pickle.dump(model, (folder / 'model.pkl').open('wb'))
 
 
 def load_clustering_model(model_file: Path) -> SphericalKMeans:
