@@ -1,27 +1,42 @@
+import numpy as np
+
 from argparse import ArgumentParser
 from pathlib import Path
+from typing import List
 from spherecluster import SphericalKMeans
+from joblib import Parallel, delayed, cpu_count
 
 from scripts.data_processing.model_folder import ModelFolder
 from scripts.data_processing.data_loading import save_clustering_model
 
 
-def run_clustering(model_folder: ModelFolder, n_clusters: int, n_init: int, max_iter: int, init: str = 'random',
-                   n_jobs: int = -1, random_state: int = 42) -> SphericalKMeans:
+def __run_clustering(vectors: np.ndarray, models_folder: Path, n_clusters: int, n_init: int, max_iter: int, init: str,
+                     n_jobs: int, random_state: int) -> SphericalKMeans:
 
-    vectors = model_folder.get_vectors()
     kmeans = SphericalKMeans(n_clusters=n_clusters, n_init=n_init, max_iter=max_iter, n_jobs=-n_jobs,
                              verbose=1, random_state=random_state, init=init)
     kmeans.fit(vectors)
+    save_clustering_model(models_folder / f'kmeans-{n_clusters}', kmeans)
 
-    save_clustering_model(model_folder.clustering_models_folder / f'kmeans-{n_clusters}', kmeans)
+
+def run_clustering(model_folder: ModelFolder, ns_clusters: List[int], n_init: int, max_iter: int, init: str = 'random',
+                   n_jobs: int = -1, random_state: int = 42) -> List[SphericalKMeans]:
+
+    vectors = model_folder.get_vectors()
+    with Parallel(cpu_count() - 1) as pool:
+        models = pool([
+            delayed(__run_clustering)(vectors, model_folder.clustering_models_folder, n_clusters, n_init, max_iter,
+                                      init, n_jobs, random_state)
+            for n_clusters in ns_clusters
+        ])
+    return models
 
 
 if __name__ == '__main__':
     parser = ArgumentParser()
     parser.add_argument('--folder', help='Folder with model information', required=True, type=str)
     parser.add_argument('--data_folder', help='Folder with dataset info', required=True, type=str)
-    parser.add_argument('--n_clusters', help='Number of clusters', required=True, type=int)
+    parser.add_argument('--n_clusters', help='Number of clusters', required=True, type=int, nargs='+')
     parser.add_argument('--n_init', help='Number of initializations to try', default=10, type=int)
     parser.add_argument('--max_iter', help='Maximum number of iterations', default=300, type=int)
     parser.add_argument('--init', help='Type of initialization (k-means++ or random)', default='random', type=str)
