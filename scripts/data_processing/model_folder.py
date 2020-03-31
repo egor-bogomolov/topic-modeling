@@ -70,22 +70,22 @@ class ModelFolder:
             for f in os.listdir(self.clustering_models_folder)
         ]
 
-    def get_doc_freq(self):
+    def get_doc_freq(self) -> Counter:
         if self.doc_freq is None:
             self.doc_freq = read_doc_freq(self.doc_freq_file)
         return self.doc_freq
 
-    def get_term_freq(self):
+    def get_term_freq(self) -> Counter:
         if self.term_freq is None:
             self.term_freq = read_term_freq(self.term_freq_file)
         return self.term_freq
 
-    def get_idf(self):
+    def get_idf(self) -> Counter:
         if self.idf is None:
             self.idf = read_idf(self.idf_file)
         return self.idf
 
-    def save_oov(self):
+    def save_oov(self) -> None:
         if not self.oov.exists():
             tf = self.get_term_freq()
             tokens = set(self.get_tokens())
