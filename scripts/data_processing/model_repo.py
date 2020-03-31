@@ -38,7 +38,7 @@ class ModelRepo:
         result = [None] * len(repos_chunk)
         for i, repo in enumerate(repos_chunk):
             repo = repo.strip()
-            repo_name = re.findall(self.__pattern_repo, repo)[0]
+            repo_name = re.findall(self.__pattern_repo, repo)[0][1]
             word_counts = re.findall(self.__pattern_words, repo)
             words = [word for _, word, _, _ in word_counts]
             counts = [int(count) for _, _, _, count in word_counts]
