@@ -32,7 +32,8 @@ class ClusteringModel:
 
         self.clusters_file = folder / 'clusters.npy'
         self.clusters = None
-        self.reference_tokens_file = folder / 'reference_tokens.txt'
+        self.reference_tokens_file = folder / 'reference_tokens.pkl'
+        self.readable_tokens_file = folder / 'readable.txt'
         self.reference_tokens = None
 
         self.__n_clusters = None
@@ -80,6 +81,7 @@ class ClusteringModel:
             self.reference_tokens[cluster].sort()
 
         save_reference_tokens(self.reference_tokens_file, self.reference_tokens)
+        save_readable_ref_tokens(self.readable_tokens_file, self.reference_tokens, tokens, 30)
 
     def get_reference_tokens(self) -> List[List]:
         if not self.reference_tokens_file.exists():
