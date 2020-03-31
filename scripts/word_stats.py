@@ -17,7 +17,12 @@ parser.add_argument("--bow", help="Directory with unzipped BOW data", required=T
 args = parser.parse_args()
 
 
-def extract_frequencies_from_file(lines):
+def extract_frequencies_from_file(fname):
+    print(f'Loading data from {fname}')
+    lines = open(fname, 'r').readlines()
+    n_documents = len(lines)
+    print(f'Loaded successfully from {fname}\nFound {n_documents} documents')
+
     doc_frequency = Counter()
     term_frequency = Counter()
     # lines = open(fname, 'r').readlines()
@@ -28,34 +33,39 @@ def extract_frequencies_from_file(lines):
             doc_frequency[word] += 1
             term_frequency[word] += int(count)
 
-    return doc_frequency, term_frequency
+    return doc_frequency, term_frequency, n_documents
 
 
 files = [f for f in os.listdir(args.bow) if not f.endswith('.lzo') and not f.endswith('.lzo.index') and f != '.gitkeep']
 print(f'Loading data from {len(files)} files')
-projects = [open(os.path.join(args.bow, fname), 'r').readlines() for fname in files]
-n_documents = sum(map(len, projects))
-print(f'Found {n_documents} projects')
+# projects = [ for fname in files]
+# n_documents = sum(map(len, projects))
+# print(f'Found {n_documents} projects')
 
 doc_freq = Counter()
 term_freq = Counter()
+
+total_documents = 0
 
 n_cpus = cpu_count()
 with Parallel(n_cpus) as pool:
     print(f'Extracting stats from files')
     counters = pool([
-        delayed(extract_frequencies_from_file)(project)
-        for project in tqdm(projects)
+        delayed(extract_frequencies_from_file)(os.path.join(args.bow, fname))
+        for fname in tqdm(files)
     ])
-    for d_counter, t_counter in counters:
+    print(f'Aggregating counters')
+    for d_counter, t_counter, n_docs in counters:
         doc_freq += d_counter
         term_freq += t_counter
+        total_documents += n_docs
 
+print(f'Found {total_documents} documents in total')
 print(f'Computing idf and global tf-idf')
 idf = Counter()
 tf_idf = Counter()
 for word, count in doc_freq.items():
-    idf_word = np.log(n_documents / count)
+    idf_word = np.log(total_documents / count)
     idf[word] = idf_word
     tf_idf[word] = term_freq[word] * idf_word
 
