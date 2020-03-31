@@ -55,10 +55,12 @@ class ModelRepo:
                 repos = file.open('r').readlines()
                 chunk_size = (len(repos) + self.n_jobs - 1) // self.n_jobs
                 print(f'Found {len(repos)} repos, chunk size = {chunk_size}')
-                results += pool([
+                chunk_results = pool([
                     delayed(self.__process_repos_chunk)(repos[start:start + chunk_size], f)
                     for start in range(0, len(repos), chunk_size)
                 ])
+                for chunk_result in chunk_results:
+                    results += chunk_result
         return results
 
     def repos_names(self) -> List[str]:
