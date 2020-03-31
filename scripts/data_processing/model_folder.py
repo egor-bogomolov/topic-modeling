@@ -24,6 +24,7 @@ class ModelFolder:
         self.vectors = None
         self.tokens_file = folder / 'tokens.txt'
         self.tokens = None
+        self.rev_index = None
         self.clustering_models_folder = folder / 'clustering_models'
         self.clustering_models = None
 
@@ -53,6 +54,11 @@ class ModelFolder:
         if self.tokens is None:
             self.tokens = read_tokens(self.tokens_file)
         return self.tokens
+
+    def tokens_rev_index(self) -> Dict[str, int]:
+        if self.rev_index is None:
+            self.rev_index = {name: i for i, name in enumerate(self.get_tokens())}
+        return self.rev_index
 
     def get_vectors(self) -> np.ndarray:
         if not self.vectors_file.exists():
