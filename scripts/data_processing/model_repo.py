@@ -19,7 +19,7 @@ class ModelRepo:
         self.data_folder = data_folder
         self.repos_data_folder = data_folder / 'bow'
         self.repos_data_files = [
-            data_folder / f
+            data_folder / 'bow' / f
             for f in os.listdir(self.repos_data_folder)
             if not f.endswith('.lzo') and not f.endswith('.lzo.index') and f != '.gitkeep'
         ]
