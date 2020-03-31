@@ -40,6 +40,8 @@ class ModelFolder:
         self.idf_file = data_folder / 'stats' / 'idf.pkl'
         self.idf = None
 
+        self.oov = folder / 'oov.txt'
+
     def __parse_vec_file(self) -> None:
         self.tokens, self.vectors = read_vec_file(self.model_vec_file, self.n_tokens, self.dim)
         save_tokens(self.tokens_file, self.tokens)
@@ -82,3 +84,10 @@ class ModelFolder:
         if self.idf is None:
             self.idf = read_idf(self.idf_file)
         return self.idf
+
+    def save_oov(self):
+        if not self.oov.exists():
+            tf = self.get_term_freq()
+            tokens = set(self.get_tokens())
+            with self.oov.open('w') as fout:
+                fout.write('\n'.join(token for token in tf if token not in tokens))
