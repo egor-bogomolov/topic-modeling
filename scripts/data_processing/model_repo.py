@@ -18,8 +18,8 @@ from scripts.data_processing.data_loading import *
 
 class RepoWordCount(NamedTuple):
     name: str
-    word: str
-    count: int
+    words: str
+    count: np.ndarray
 
 
 class ModelRepo:
@@ -53,8 +53,9 @@ class ModelRepo:
             repo = repo.strip()
             repo_name = re.findall(pattern_repo, repo)[0][1]
             word_counts = re.findall(pattern_words, repo)
-            for _, word, _, count in word_counts:
-                result.append(RepoWordCount(repo_name, word, int(count)))
+            words = '|'.join(wc[1] for wc in word_counts)
+            counts = np.array([int(wc[3]) for wc in word_counts], dtype=np.int32)
+            result.append(RepoWordCount(repo_name, words, counts))
         return result
 
     def __extract_from_file_batch(self, file_batch) -> List[RepoWordCount]:
@@ -100,15 +101,26 @@ class ModelRepo:
             print('Repo word counts extracted')
 
         for file in os.listdir(self.repo_word_counts_folder):
+            print('Loading batch')
             yield pickle.load((self.repo_word_counts_folder / file).open('rb'))
 
     def repos_names(self) -> List[str]:
         if not self.repos_names_file.exists():
-            self.names = list(set(rwc.name for rwc_list in self.__extract_repo_data() for rwc in rwc_list))
+            self.names = [rwc.name for rwc_list in self.__extract_repo_data() for rwc in rwc_list]
             self.repos_names_file.open('w').write('\n'.join(self.names))
         if self.names is None:
             self.names = [line.strip() for line in self.repos_names_file.open('r').readlines()]
         return self.names
+
+    def data_stats(self) -> None:
+        count_batches = 0
+        count_repos = 0
+        count_wc = 0
+        for rwc_list in self.__extract_repo_data():
+            count_batches += 1
+            for rwc in rwc_list:
+                count_repos += 1
+                count_wc += len(rwc.count)
 
     def repos_rev_index(self) -> Dict[str, int]:
         if self.rev_index is None:
