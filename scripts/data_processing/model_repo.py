@@ -30,8 +30,9 @@ class ModelRepo:
         self.repos_data_files = [
             data_folder / 'bow' / f
             for f in os.listdir(self.repos_data_folder)
-            if not f.endswith('.lzo') and not f.endswith('.lzo.index') and f != '.gitkeep' and not f.is_dir()
+            if not f.endswith('.lzo') and not f.endswith('.lzo.index') and f != '.gitkeep'
         ]
+        self.repos_data_folder = [f for f in self.repos_data_folder if not f.is_dir()]
 
         self.repo_word_counts_folder = data_folder / 'bow' / 'rwc'
 
