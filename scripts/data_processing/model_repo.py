@@ -44,7 +44,7 @@ class ModelRepo:
         self.cluster_embeddings = {}
 
     @staticmethod
-    def __process_repos_chunk(fname: str, pattern_repo, pattern_words) -> List[RepoWordCount]:
+    def __process_repos_chunk(repos_chunk: List[str], pattern_repo, pattern_words) -> List[RepoWordCount]:
         result = []
         for i, repo in enumerate(repos_chunk):
             repo = repo.strip()
