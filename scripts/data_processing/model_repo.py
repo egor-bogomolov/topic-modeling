@@ -115,14 +115,14 @@ class ModelRepo:
         return self.names
 
     def data_stats(self) -> None:
-        count_batches = 0
         count_repos = 0
         count_wc = 0
-        for rwc_list in self.__extract_repo_data():
-            count_batches += 1
-            for rwc in rwc_list:
-                count_repos += 1
-                count_wc += len(rwc.count)
+        total_counts = 0
+        for rwc in self.__extract_repo_data():
+            count_repos += 1
+            count_wc += len(rwc.count)
+            total_counts += sum(rwc.count)
+        print(f'Found:\n{count_repos} repos\n{count_wc} word-count pairs\nTotal count: {total_counts}')
 
     def repos_rev_index(self) -> Dict[str, int]:
         if self.rev_index is None:
