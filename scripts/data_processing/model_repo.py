@@ -103,6 +103,7 @@ class ModelRepo:
             print(f'Dumped')
             self.repo_word_counts = result
         if self.repo_word_counts is None:
+            print('Loading pickled rwc data')
             self.repo_word_counts = pickle.load(self.repo_word_counts_file.open('rb'))
         return self.repo_word_counts
 
