@@ -161,17 +161,20 @@ class ModelRepo:
             last_word = None
             cur_cluster = -1
             missing = 0
+            saved = 0
             for rwc in tqdm(rwc_list):
                 try:
                     if rwc[0] != last_word:
                         cur_cluster = clusters[token_rev_index[rwc[0]]]
                         last_word = rwc[0]
+                    else:
+                        saved += 1
                     cluster_embeddings[rwc[1]][cur_cluster] += rwc[2]
-                except ValueError:
+                except KeyError:
                     missing += 1
             end_time = time.time()
             print(f'Aggregated in {end_time - start_time} sec')
-            print(f'Missed {missing} values')
+            print(f'Missed {missing} values, saved {saved} calls to dictionary')
             step_end_time = time.time()
             print(f'Step finished in {step_end_time - step_start_time:.1f} sec')
 
