@@ -21,6 +21,7 @@ class ClusteringModel:
         if not folder.is_dir():
             raise ValueError(f'{folder} is not a directory')
 
+        self.name = self.folder.name
         self.folder = folder
         self.model_folder = model_folder
         self.min_repo_count = min_repo_count

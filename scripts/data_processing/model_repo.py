@@ -1,5 +1,6 @@
 import os
 import re
+
 import numpy as np
 
 from pathlib import Path
@@ -10,7 +11,11 @@ from scripts.data_processing.clustering_model import ClusteringModel
 from scripts.data_processing.model_folder import ModelFolder
 from scripts.data_processing.data_loading import *
 
-T = TypeVar('T')
+
+class RepoWordCount(NamedTuple):
+    name: str
+    word: str
+    count: int
 
 
 class ModelRepo:
@@ -24,6 +29,8 @@ class ModelRepo:
             if not f.endswith('.lzo') and not f.endswith('.lzo.index') and f != '.gitkeep'
         ]
 
+        self.repo_word_counts = None
+
         self.repos_names_file = data_folder / 'stats' / 'repos_names.txt'
         self.names = None
         self.rev_index = None
@@ -34,38 +41,42 @@ class ModelRepo:
 
         self.cluster_embeddings = {}
 
-    def __process_repos_chunk(self, repos_chunk: List[str], f: Callable[[str, List[str], List[int]], T]) -> List[T]:
-        result = [None] * len(repos_chunk)
+    @staticmethod
+    def __process_repos_chunk(repos_chunk: List[str], pattern_repo, pattern_words) -> List[RepoWordCount]:
+        result = []
         for i, repo in enumerate(repos_chunk):
             repo = repo.strip()
-            repo_name = re.findall(self.__pattern_repo, repo)[0][1]
-            word_counts = re.findall(self.__pattern_words, repo)
-            words = [word for _, word, _, _ in word_counts]
-            counts = [int(count) for _, _, _, count in word_counts]
-            result[i] = f(repo_name, words, counts)
+            repo_name = re.findall(pattern_repo, repo)[0][1]
+            word_counts = re.findall(pattern_words, repo)
+            for _, word, _, count in word_counts:
+                result.append(RepoWordCount(repo_name, word, int(count)))
         return result
 
-    def __aggregate(self, f: Callable[[str, List[str], List[int]], T]) -> List[T]:
-        """Apply function to all repositories in parallel.
-        """
-        results = []
-        with Parallel(self.n_jobs) as pool:
-            for file in self.repos_data_files:
-                print(f'Processing repos in {file.name}')
-                repos = file.open('r').readlines()
-                chunk_size = (len(repos) + self.n_jobs - 1) // self.n_jobs
-                print(f'Found {len(repos)} repos, chunk size = {chunk_size}')
-                chunk_results = pool([
-                    delayed(self.__process_repos_chunk)(repos[start:start + chunk_size], f)
-                    for start in range(0, len(repos), chunk_size)
-                ])
-                for chunk_result in chunk_results:
-                    results += chunk_result
-        return results
+    def __extract_repo_data(self) -> List[RepoWordCount]:
+        print('Extracting repo data')
+        if self.repo_word_counts is None:
+            results = []
+            with Parallel(self.n_jobs) as pool:
+                for file in self.repos_data_files:
+                    print(f'Processing repos in {file.name}')
+                    repos = file.open('r').readlines()
+                    chunk_size = (len(repos) + self.n_jobs - 1) // self.n_jobs
+                    print(f'Found {len(repos)} repos, chunk size = {chunk_size}')
+                    chunk_results = pool([
+                        delayed(self.__process_repos_chunk)(
+                            repos[start:start + chunk_size], self.__pattern_repo, self.__pattern_words
+                        )
+                        for start in range(0, len(repos), chunk_size)
+                    ])
+                    for chunk_result in chunk_results:
+                        results += chunk_result
+            self.repo_word_counts = results
+        print('Repo word counts extracted')
+        return self.repo_word_counts
 
     def repos_names(self) -> List[str]:
         if not self.repos_names_file.exists():
-            self.names = self.__aggregate(lambda names, words, counts: names)
+            self.names = list(set(rwc.name for rwc in self.__extract_repo_data()))
             self.repos_names_file.open('w').write('\n'.join(self.names))
         if self.names is None:
             self.names = [line.strip() for line in self.repos_names_file.open('r').readlines()]
@@ -77,33 +88,39 @@ class ModelRepo:
         return self.rev_index
 
     def __repos_cluster_embeddings(self, model_folder: ModelFolder, clustering_model: ClusteringModel) -> np.ndarray:
-        n_clusters = clustering_model.n_clusters()
         token_rev_index = model_folder.tokens_rev_index()
+        repos_rev_index = self.repos_rev_index()
+        n_repos = len(repos_rev_index)
         clusters = clustering_model.get_clusters()
+        n_clusters = clustering_model.n_clusters()
 
-        def repo_to_cluster_embedding(name: str, words: List[str], counts: List[int]) -> np.ndarray:
-            embedding = np.zeros(n_clusters, dtype=np.int32)
-            for word, count in zip(words, counts):
-                embedding[clusters[token_rev_index[word]]] += count
-            return embedding
+        repo_word_counts = self.__extract_repo_data()
+        print('Sorting repo word counts')
+        repo_word_counts.sort(key=lambda rwc: rwc.word)
 
-        cluster_embeddings = np.array(self.__aggregate(repo_to_cluster_embedding))
+        cluster_embeddings = np.zeros((n_repos, n_clusters), dtype=np.int32)
+        last_word = None
+        cur_cluster = -1
+        for rwc in repo_word_counts:
+            if rwc.word != last_word:
+                cur_cluster = clusters[token_rev_index[rwc.word]]
+                last_word = rwc.word
+            repo_index = repos_rev_index[rwc.name]
+            cluster_embeddings[repo_index][cur_cluster] += rwc.count
+
         return cluster_embeddings
 
-    def __cluster_embeddings_file(self, clustering_model_name: str):
-        folder = self.data_folder / 'stats' / clustering_model_name
-        if not folder.exists():
-            folder.mkdir()
-        return folder / 'repo_vectors.npy'
+    @staticmethod
+    def __cluster_embeddings_file(clustering_model: ClusteringModel):
+        return clustering_model.folder / 'repos_cluster_embeddings.npy'
 
-    def repos_cluster_embeddings(self, model_folder: ModelFolder, clustering_model_name: str) -> np.ndarray:
-        clustering_embeddings_file = self.__cluster_embeddings_file(clustering_model_name)
+    def repos_cluster_embeddings(self, model_folder: ModelFolder, clustering_model: ClusteringModel) -> np.ndarray:
+        clustering_embeddings_file = self.__cluster_embeddings_file(clustering_model)
         if not clustering_embeddings_file.exists():
-            clustering_model = ClusteringModel(Path(clustering_model_name), model_folder)
             cluster_embeddings = self.__repos_cluster_embeddings(model_folder, clustering_model)
-            save_vectors(self.__cluster_embeddings_file(clustering_model_name), cluster_embeddings)
-            self.cluster_embeddings[clustering_model_name] = cluster_embeddings
-        if clustering_model_name not in self.cluster_embeddings:
-            self.cluster_embeddings[clustering_model_name] = \
-                read_vectors(self.__cluster_embeddings_file(clustering_model_name))
-        return self.cluster_embeddings[clustering_model_name]
+            self.cluster_embeddings[clustering_model.name] = cluster_embeddings
+            save_vectors(self.__cluster_embeddings_file(clustering_model), cluster_embeddings)
+        if clustering_model.name not in self.cluster_embeddings:
+            self.cluster_embeddings[clustering_model.name] = \
+                read_vectors(self.__cluster_embeddings_file(clustering_model.name))
+        return self.cluster_embeddings[clustering_model.name]
