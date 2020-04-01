@@ -2,7 +2,7 @@ import os
 import pickle
 import re
 import time
-
+import sys
 import numpy as np
 
 from pathlib import Path
@@ -34,7 +34,8 @@ class ModelRepo:
         ]
         self.repos_data_folder = [f for f in self.repos_data_files if not f.is_dir()]
 
-        self.repo_word_counts_folder = data_folder / 'bow' / 'rwc'
+        self.repo_word_counts_file = data_folder / 'stats' / 'rwc.pkl'
+        self.repo_word_counts = None
 
         self.repos_names_file = data_folder / 'stats' / 'repos_names.txt'
         self.names = None
@@ -86,27 +87,29 @@ class ModelRepo:
             results += chunk_result
         return results
 
-    def __extract_repo_data(self) -> Generator[List[RepoWordCount], None, None]:
-        if not self.repo_word_counts_folder.exists():
-            self.repo_word_counts_folder.mkdir()
-
+    def __extract_repo_data(self) -> List[RepoWordCount]:
+        if not self.repo_word_counts_file.exists():
             print('Extracting repo data')
             n_files = len(self.repos_data_files)
             file_batch_size = 10
+            result = []
             for ind, i in enumerate(range(0, n_files, file_batch_size)):
                 file_batch = self.repos_data_files[i:i + file_batch_size]
                 rwc_batch = self.__extract_from_file_batch(file_batch)
-                print("Dumping repo word counts")
-                pickle.dump(rwc_batch, (self.repo_word_counts_folder / f'batch-{ind}.pkl').open('wb'))
+                result += rwc_batch
             print('Repo word counts extracted')
-
-        for file in os.listdir(self.repo_word_counts_folder):
-            print('Loading batch')
-            yield pickle.load((self.repo_word_counts_folder / file).open('rb'))
+            print(f'Result takes {sys.getsizeof(result) // 2**20} MB')
+            print(f'Dumping extracted data')
+            pickle.dump(result, self.repo_word_counts_file.open('wb'))
+            print(f'Dumped')
+            self.repo_word_counts = result
+        if self.repo_word_counts is None:
+            self.repo_word_counts = pickle.load(self.repo_word_counts_file.open('rb'))
+        return self.repo_word_counts
 
     def repos_names(self) -> List[str]:
         if not self.repos_names_file.exists():
-            self.names = [rwc.name for rwc_list in self.__extract_repo_data() for rwc in rwc_list]
+            self.names = [rwc.name for rwc in self.__extract_repo_data()]
             self.repos_names_file.open('w').write('\n'.join(self.names))
         if self.names is None:
             self.names = [line.strip() for line in self.repos_names_file.open('r').readlines()]
