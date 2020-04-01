@@ -44,10 +44,9 @@ class ModelRepo:
         self.cluster_embeddings = {}
 
     @staticmethod
-    def __process_repos_chunk(file: Path, pattern_repo, pattern_words) -> List[RepoWordCount]:
+    def __process_repos_chunk(fname: str, pattern_repo, pattern_words) -> List[RepoWordCount]:
         result = []
-        print(f'Processing {file.name}')
-        for repo in file.open('r').readlines():
+        for i, repo in enumerate(repos_chunk):
             repo = repo.strip()
             repo_name = re.findall(pattern_repo, repo)[0][1]
             word_counts = re.findall(pattern_words, repo)
@@ -61,13 +60,29 @@ class ModelRepo:
             results = []
             with Parallel(self.n_jobs) as pool:
                 n_files = len(self.repos_data_files)
-                print(f'Got {n_files} files')
-                chunk_results = pool([
-                    delayed(self.__process_repos_chunk)(
-                        repos_file, self.__pattern_repo, self.__pattern_words
-                    )
-                    for repos_file in self.repos_data_files
-                ])
+                file_batch_size = 10
+                for i in range(0, n_files, file_batch_size):
+                    file_batch = self.repos_data_files[i:i + file_batch_size]
+                    print(f'Loading {len(file_batch)} files')
+                    file_data = [
+                        file.open('r').readlines()
+                        for file in tqdm(file_batch)
+                    ]
+                    total_len = sum(map(len, file_data))
+                    chunk_size = total_len // (self.n_jobs * n_files)
+                    print(f'Found {total_len} repos, chunk size = {chunk_size}')
+                    chunks = [
+                        repos[start:start + chunk_size]
+                        for repos in file_data
+                        for start in range(0, len(repos), chunk_size)
+                    ]
+                    print(f'Processing {len(chunks)} chunks')
+
+                    chunk_results = pool([
+                        delayed(self.__process_repos_chunk)(chunk, self.__pattern_repo, self.__pattern_words)
+                        for chunk in chunks
+                    ])
+
                 for chunk_result in chunk_results:
                     results += chunk_result
 
