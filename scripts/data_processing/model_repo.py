@@ -119,7 +119,7 @@ class ModelRepo:
         count_repos = 0
         count_wc = 0
         total_counts = 0
-        for rwc in self.__extract_repo_data():
+        for rwc in tqdm(self.__extract_repo_data()):
             count_repos += 1
             count_wc += len(rwc.count)
             total_counts += sum(rwc.count)
@@ -137,12 +137,22 @@ class ModelRepo:
         clusters = clustering_model.get_clusters()
         n_clusters = clustering_model.n_clusters()
         cluster_embeddings = np.zeros((n_repos, n_clusters), dtype=np.int32)
+        repo_word_counts = self.__extract_repo_data()
+        batch_size = len(repo_word_counts) // 100
 
-        for i, repo_word_counts in enumerate(self.__extract_repo_data()):
-            print(f'Step {i}')
-            print('Sorting repo word counts')
+        for i, start in enumerate(range(0, len(repo_word_counts), batch_size)):
+            step_start_time = time.time()
+            print(f'Step {i + 1} out of {len(repo_word_counts) // batch_size}')
+            print('Collecting repo word counts into list')
+            rwc_list = []
+            for rwc in tqdm(repo_word_counts[start:start + batch_size]):
+                repo_index = repos_rev_index[rwc.name]
+                for word, count in zip(rwc.words.split('|'), rwc.counts):
+                    rwc_list.append((word, repo_index, count))
+
+            print(f'Sorting list of len {len(rwc_list)}')
             start_time = time.time()
-            repo_word_counts.sort(key=lambda rwc: rwc.word)
+            rwc_list.sort()
             end_time = time.time()
             print(f'Sorted in {end_time - start_time} sec')
 
@@ -150,14 +160,15 @@ class ModelRepo:
             start_time = time.time()
             last_word = None
             cur_cluster = -1
-            for rwc in repo_word_counts:
-                if rwc.word != last_word:
-                    cur_cluster = clusters[token_rev_index[rwc.word]]
-                    last_word = rwc.word
-                repo_index = repos_rev_index[rwc.name]
-                cluster_embeddings[repo_index][cur_cluster] += rwc.count
+            for rwc in rwc_list:
+                if rwc[0] != last_word:
+                    cur_cluster = clusters[token_rev_index[rwc[0]]]
+                    last_word = rwc[0]
+                cluster_embeddings[rwc[1]][cur_cluster] += rwc[2]
             end_time = time.time()
-            print(f'Aggregatedin {end_time - start_time} sec')
+            print(f'Aggregated in {end_time - start_time} sec')
+            step_end_time = time.time()
+            print(f'Step finished in {step_end_time - step_start_time:.1f} sec')
 
         return cluster_embeddings
 
