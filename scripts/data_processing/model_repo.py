@@ -7,6 +7,8 @@ from pathlib import Path
 from joblib import Parallel, cpu_count, delayed
 from typing import *
 
+from tqdm import tqdm
+
 from scripts.data_processing.clustering_model import ClusteringModel
 from scripts.data_processing.model_folder import ModelFolder
 from scripts.data_processing.data_loading import *
@@ -58,8 +60,8 @@ class ModelRepo:
             results = []
             with Parallel(self.n_jobs) as pool:
                 n_files = len(self.repos_data_files)
-                print(f'Processing {n_files} files')
-                file_data = [file.open('r').readlines() for file in self.repos_data_files]
+                print(f'Loading {n_files} files')
+                file_data = [file.open('r').readlines() for file in tqdm(self.repos_data_files)]
                 total_len = sum(map(len, file_data))
                 chunk_size = total_len // (self.n_jobs * n_files)
                 print(f'Found {total_len} repos, chunk size = {chunk_size}')
