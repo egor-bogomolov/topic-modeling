@@ -84,7 +84,7 @@ class ModelRepo:
             results += chunk_result
         return results
 
-    def __extract_repo_data(self) -> Generator[List[RepoWordCount]]:
+    def __extract_repo_data(self) -> Generator[List[RepoWordCount], None, None]:
         if not self.repo_word_counts_folder.exists():
             self.repo_word_counts_folder.mkdir()
 
@@ -99,7 +99,7 @@ class ModelRepo:
             print('Repo word counts extracted')
 
         for file in os.listdir(self.repo_word_counts_folder):
-            return pickle.load((self.repo_word_counts_folder / file).open('rb'))
+            yield pickle.load((self.repo_word_counts_folder / file).open('rb'))
 
     def repos_names(self) -> List[str]:
         if not self.repos_names_file.exists():
