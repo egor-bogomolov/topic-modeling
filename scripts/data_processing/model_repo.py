@@ -147,7 +147,7 @@ class ModelRepo:
             rwc_list = []
             for rwc in tqdm(repo_word_counts[start:start + batch_size]):
                 repo_index = repos_rev_index[rwc.name]
-                for word, count in zip(rwc.words.split('|'), rwc.counts):
+                for word, count in zip(rwc.words.split('|'), rwc.count):
                     rwc_list.append((word, repo_index, count))
 
             print(f'Sorting list of len {len(rwc_list)}')
