@@ -57,19 +57,22 @@ class ModelRepo:
         if self.repo_word_counts is None:
             results = []
             with Parallel(self.n_jobs) as pool:
-                for file in self.repos_data_files:
-                    print(f'Processing repos in {file.name}')
-                    repos = file.open('r').readlines()
-                    chunk_size = (len(repos) + self.n_jobs - 1) // self.n_jobs
-                    print(f'Found {len(repos)} repos, chunk size = {chunk_size}')
-                    chunk_results = pool([
-                        delayed(self.__process_repos_chunk)(
-                            repos[start:start + chunk_size], self.__pattern_repo, self.__pattern_words
-                        )
-                        for start in range(0, len(repos), chunk_size)
-                    ])
-                    for chunk_result in chunk_results:
-                        results += chunk_result
+                n_files = len(self.repos_data_files)
+                print(f'Processing {n_files} files')
+                file_data = [file.open('r').readlines() for file in self.repos_data_files]
+                total_len = sum(map(len, file_data))
+                chunk_size = total_len // (self.n_jobs * n_files)
+                print(f'Found {total_len} repos, chunk size = {chunk_size}')
+                chunk_results = pool([
+                    delayed(self.__process_repos_chunk)(
+                        repos[start:start + chunk_size], self.__pattern_repo, self.__pattern_words
+                    )
+                    for repos in file_data
+                    for start in range(0, len(repos), chunk_size)
+                ])
+                for chunk_result in chunk_results:
+                    results += chunk_result
+
             self.repo_word_counts = results
         print('Repo word counts extracted')
         return self.repo_word_counts
