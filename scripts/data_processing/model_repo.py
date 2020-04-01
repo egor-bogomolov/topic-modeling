@@ -44,9 +44,10 @@ class ModelRepo:
         self.cluster_embeddings = {}
 
     @staticmethod
-    def __process_repos_chunk(repos_chunk: List[str], pattern_repo, pattern_words) -> List[RepoWordCount]:
+    def __process_repos_chunk(file: Path, pattern_repo, pattern_words) -> List[RepoWordCount]:
         result = []
-        for i, repo in enumerate(repos_chunk):
+        print(f'Processing {file.name}')
+        for repo in file.open('r').readlines():
             repo = repo.strip()
             repo_name = re.findall(pattern_repo, repo)[0][1]
             word_counts = re.findall(pattern_words, repo)
@@ -60,17 +61,12 @@ class ModelRepo:
             results = []
             with Parallel(self.n_jobs) as pool:
                 n_files = len(self.repos_data_files)
-                print(f'Loading {n_files} files')
-                file_data = [file.open('r').readlines() for file in tqdm(self.repos_data_files)]
-                total_len = sum(map(len, file_data))
-                chunk_size = total_len // (self.n_jobs * n_files)
-                print(f'Found {total_len} repos, chunk size = {chunk_size}')
+                print(f'Got {n_files} files')
                 chunk_results = pool([
                     delayed(self.__process_repos_chunk)(
-                        repos[start:start + chunk_size], self.__pattern_repo, self.__pattern_words
+                        repos_file, self.__pattern_repo, self.__pattern_words
                     )
-                    for repos in file_data
-                    for start in range(0, len(repos), chunk_size)
+                    for repos_file in self.repos_data_files
                 ])
                 for chunk_result in chunk_results:
                     results += chunk_result
