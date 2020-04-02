@@ -192,5 +192,5 @@ class ModelRepo:
             save_vectors(self.__cluster_embeddings_file(clustering_model), cluster_embeddings)
         if clustering_model.name not in self.cluster_embeddings:
             self.cluster_embeddings[clustering_model.name] = \
-                read_vectors(self.__cluster_embeddings_file(clustering_model.name))
+                read_vectors(self.__cluster_embeddings_file(clustering_model))
         return self.cluster_embeddings[clustering_model.name]
