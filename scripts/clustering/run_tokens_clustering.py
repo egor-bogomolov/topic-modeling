@@ -12,8 +12,8 @@ from scripts.data_processing.data_loading import save_clustering_model
 
 def __run_clustering(vectors: np.ndarray, models_folder: Path, n_clusters: int, n_init: int, max_iter: int, init: str,
                      n_jobs: int, random_state: int) -> SphericalKMeans:
-
-    kmeans = SphericalKMeans(n_clusters=n_clusters, n_init=n_init, max_iter=max_iter, n_jobs=-n_jobs,
+    print(f'thread = {n_jobs}')
+    kmeans = SphericalKMeans(n_clusters=n_clusters, n_init=n_init, max_iter=max_iter, n_jobs=n_jobs,
                              verbose=1, random_state=random_state, init=init)
     kmeans.fit(vectors)
     save_clustering_model(models_folder / f'kmeans-{n_clusters}', kmeans)
