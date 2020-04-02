@@ -7,7 +7,6 @@ from typing import List
 from scripts.data_processing.clustering_model import ClusteringModel
 from scripts.data_processing.model_repo import ModelRepo
 from spherecluster import SphericalKMeans
-from joblib import Parallel, delayed, cpu_count
 
 from scripts.data_processing.model_folder import ModelFolder
 from scripts.data_processing.data_loading import save_clustering_model
@@ -30,12 +29,11 @@ def run_clustering(
     clustering_model = ClusteringModel(model_folder.clustering_models_folder / clustering_model_name, model_folder)
     model_repo = ModelRepo(data_folder)
     vectors = model_repo.repos_cluster_embeddings(model_folder, clustering_model)
-    with Parallel(cpu_count() - 1) as pool:
-        models = pool([
-            delayed(__run_clustering)(vectors, model_folder.clustering_models_folder, n_clusters, n_init, max_iter,
-                                      init, n_jobs, random_state)
-            for n_clusters in ns_clusters
-        ])
+    models = []
+    for n_clusters in ns_clusters:
+            models.append(__run_clustering(
+                vectors, model_folder.clustering_models_folder, n_clusters, n_init, max_iter, init, n_jobs, random_state
+            ))
     return models
 
 

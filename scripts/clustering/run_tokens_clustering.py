@@ -4,7 +4,6 @@ from argparse import ArgumentParser
 from pathlib import Path
 from typing import List
 from spherecluster import SphericalKMeans
-from joblib import Parallel, delayed, cpu_count
 
 from scripts.data_processing.model_folder import ModelFolder
 from scripts.data_processing.data_loading import save_clustering_model
@@ -23,12 +22,11 @@ def run_clustering(model_folder: ModelFolder, ns_clusters: List[int], n_init: in
                    n_jobs: int = -1, random_state: int = 42) -> List[SphericalKMeans]:
 
     vectors = model_folder.get_vectors()
-    with Parallel(cpu_count() - 1) as pool:
-        models = pool([
-            delayed(__run_clustering)(vectors, model_folder.clustering_models_folder, n_clusters, n_init, max_iter,
-                                      init, n_jobs, random_state)
-            for n_clusters in ns_clusters
-        ])
+    models = []
+    for n_clusters in ns_clusters:
+        models.append(__run_clustering(
+            vectors, model_folder.clustering_models_folder, n_clusters, n_init, max_iter, init, n_jobs, random_state
+        ))
     return models
 
 
