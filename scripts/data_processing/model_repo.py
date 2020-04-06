@@ -181,7 +181,7 @@ class ModelRepo:
         return cluster_embeddings
 
     @staticmethod
-    def __cluster_embeddings_file(clustering_model: ClusteringModel):
+    def __cluster_embeddings_file(clustering_model: ClusteringModel) -> Path:
         return clustering_model.folder / 'repos_cluster_embeddings.npy'
 
     def repos_cluster_embeddings(self, model_folder: ModelFolder, clustering_model: ClusteringModel) -> np.ndarray:
