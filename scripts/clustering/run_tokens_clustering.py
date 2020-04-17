@@ -6,16 +6,20 @@ from typing import List
 from spherecluster import SphericalKMeans
 
 from scripts.data_processing.model_folder import ModelFolder
+from scripts.data_processing.clustering_model import ClusteringModel
 from scripts.data_processing.data_loading import save_clustering_model
 
 
-def __run_clustering(vectors: np.ndarray, models_folder: Path, n_clusters: int, n_init: int, max_iter: int, init: str,
+def __run_clustering(vectors: np.ndarray, model_folder: ModelFolder, n_clusters: int, n_init: int, max_iter: int, init: str,
                      n_jobs: int, random_state: int) -> SphericalKMeans:
     print(f'thread = {n_jobs}')
     kmeans = SphericalKMeans(n_clusters=n_clusters, n_init=n_init, max_iter=max_iter, n_jobs=n_jobs,
                              verbose=1, random_state=random_state, init=init)
     kmeans.fit(vectors)
-    save_clustering_model(models_folder / f'kmeans-{n_clusters}', kmeans)
+    clustering_folder = model_folder.clustering_models_folder / f'kmeans-{n_clusters}'
+    save_clustering_model(clustering_folder, kmeans)
+    clustering_model = ClusteringModel(clustering_folder, model_folder)
+    clustering_model.get_reference_tokens()
 
 
 def run_clustering(model_folder: ModelFolder, ns_clusters: List[int], n_init: int, max_iter: int, init: str = 'random',
@@ -25,7 +29,7 @@ def run_clustering(model_folder: ModelFolder, ns_clusters: List[int], n_init: in
     models = []
     for n_clusters in ns_clusters:
         models.append(__run_clustering(
-            vectors, model_folder.clustering_models_folder, n_clusters, n_init, max_iter, init, n_jobs, random_state
+            vectors, model_folder, n_clusters, n_init, max_iter, init, n_jobs, random_state
         ))
     return models
 

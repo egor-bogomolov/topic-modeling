@@ -63,18 +63,19 @@ class ClusteringModel:
             self.clusters = read_clusters(self.clusters_file)
         return self.clusters
 
-    def __extract_reference_tokens(self) -> None:
+    def __extract_reference_tokens(self, use_doc_freq: bool) -> None:
         model = self.get_model()
         clusters = self.get_clusters()
         vectors = self.model_folder.get_vectors()
         tokens = self.model_folder.get_tokens()
-        doc_freq = self.model_folder.get_doc_freq()
+        if use_doc_freq:
+            doc_freq = self.model_folder.get_doc_freq()
         n_clusters = self.n_clusters()
 
         self.reference_tokens = [[] for _ in range(n_clusters)]
 
         for i, (cluster, vector, token) in enumerate(zip(clusters, vectors, tokens)):
-            if doc_freq[token] < self.min_repo_count:
+            if use_doc_freq and doc_freq[token] < self.min_repo_count:
                 continue
             self.reference_tokens[cluster].append((cosine(model.cluster_centers_[cluster], vector), i))
 
@@ -84,9 +85,9 @@ class ClusteringModel:
         save_reference_tokens(self.reference_tokens_file, self.reference_tokens)
         save_readable_ref_tokens(self.readable_tokens_file, self.reference_tokens, tokens, 30)
 
-    def get_reference_tokens(self) -> List[List]:
+    def get_reference_tokens(self, use_doc_freq=False) -> List[List]:
         if not self.reference_tokens_file.exists():
-            self.__extract_reference_tokens()
+            self.__extract_reference_tokens(use_doc_freq)
         if self.reference_tokens is None:
             self.reference_tokens = read_reference_tokens(self.reference_tokens_file)
         return self.reference_tokens
