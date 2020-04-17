@@ -23,5 +23,5 @@ while True:
 
 with lzma.open("repo_stars.txt.xz", "wb") as repo_stars:
     for repo, count in star_counts.most_common():
-        repo_stars.write(f"{repo} {count}".encode(errors="ignore"))
+        repo_stars.write(f"{repo} {count}\n".encode(errors="ignore"))
         repo_stars.write(b"\0")
