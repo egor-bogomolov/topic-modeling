@@ -11,7 +11,7 @@ with lzma.open("repo_stars.txt.xz", "wb") as repo_stars:
                     unicode_decode_error_handler="ignore")):
                 try:
                     obj
-                    obj["starred_url"]
+                    obj[0]["starred_url"]
                     obj["repo"]
                     obj["owner"]
                 except KeyError:
